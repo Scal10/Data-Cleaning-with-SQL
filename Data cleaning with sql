@@ -1,0 +1,149 @@
+-- Cleaning data using SQL queries
+SELECT *
+    FROM PortfolioProject.dbo.[Nashville Housing] 
+
+
+-- Update all Null values in "PropertyAddress" column 
+
+SELECT * 
+    FROM PortfolioProject.dbo.[Nashville Housing]
+    --Where PropertyAddress is null
+    ORDER BY ParcelID
+
+
+SELECT x.ParcelID, x.PropertyAddress, y.ParcelID, y.PropertyAddress, 
+ISNULL(x.PropertyAddress, y.PropertyAddress)
+    FROM PortfolioProject.dbo.[Nashville Housing] x
+    JOIN PortfolioProject.dbo.[Nashville Housing] y
+    ON x.ParcelID = y.ParcelID
+    AND x.[UniqueID] <> y.[UniqueID]
+    WHERE x.PropertyAddress IS NULL
+
+UPDATE x
+SET PropertyAddress = ISNULL(x.PropertyAddress, y.PropertyAddress)
+    FROM PortfolioProject.dbo.[Nashville Housing] x
+    JOIN PortfolioProject.dbo.[Nashville Housing] y
+    ON x.ParcelID = y.ParcelID
+    AND x.[UniqueID] <> y.[UniqueID]
+    WHERE x.PropertyAddress IS NULL
+
+
+-- Lets split the Addresses into individual columns (Address, City, State) Using two methods
+SELECT PropertyAddress, OwnerAddress
+    FROM PortfolioProject.dbo.[Nashville Housing]
+
+--"Property address" goes first using the first method
+
+SELECT PropertyAddress
+    FROM PortfolioProject.dbo.[Nashville Housing]
+
+
+ SELECT
+    SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress) -1) AS Address,
+    SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress) +1, LEN(PropertyAddress)) AS Address
+    
+     FROM PortfolioProject.dbo.[Nashville Housing]
+
+    ALTER TABLE PortfolioProject.dbo.[Nashville Housing]
+    ADD NewPropertyAddress NVARCHAR(50);
+
+    UPDATE PortfolioProject.dbo.[Nashville Housing]
+    SET NewPropertyAddress = SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress) -1)
+
+    ALTER TABLE PortfolioProject.dbo.[Nashville Housing]
+    ADD NewPropertyCity NVARCHAR(50);
+
+    UPDATE PortfolioProject.dbo.[Nashville Housing]
+    SET NewPropertyCity = SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress) +1, LEN(PropertyAddress))
+
+
+-- Second method to be used for "OwnerAddress"
+SELECT OwnerAddress
+    FROM PortfolioProject.dbo.[Nashville Housing]
+
+
+SELECT
+    PARSENAME (REPLACE(OwnerAddress, ',', '.'),3),
+    PARSENAME (REPLACE(OwnerAddress, ',', '.'),2),
+    PARSENAME (REPLACE(OwnerAddress, ',', '.'),1)
+    FROM PortfolioProject.dbo.[Nashville Housing]
+
+ALTER TABLE PortfolioProject.dbo.[Nashville Housing]
+    ADD NewOwnerAddress NVARCHAR(50);
+
+    UPDATE PortfolioProject.dbo.[Nashville Housing]
+    SET NewOwnerAddress = PARSENAME (REPLACE(OwnerAddress, ',', '.'),3)
+
+ALTER TABLE PortfolioProject.dbo.[Nashville Housing]
+    ADD NewOwnerCity NVARCHAR(50);
+
+    UPDATE PortfolioProject.dbo.[Nashville Housing]
+    SET NewOwnerCity = PARSENAME (REPLACE(OwnerAddress, ',', '.'),2)
+
+ALTER TABLE PortfolioProject.dbo.[Nashville Housing]
+    ADD NewOwnerState NVARCHAR(50);
+
+    UPDATE PortfolioProject.dbo.[Nashville Housing]
+    SET NewOwnerState = PARSENAME (REPLACE(OwnerAddress, ',', '.'),1)
+
+SELECT * 
+    FROM PortfolioProject.dbo.[Nashville Housing]
+
+
+-- Let's change letters Y and N to Yes and No in the "SoldAsVacant" column
+
+SELECT DISTINCT (SoldAsVacant), COUNT (SoldAsVacant)
+FROM PortfolioProject.dbo.[Nashville Housing]
+GROUP BY SoldAsVacant
+ORDER BY 2
+
+SELECT SoldAsVacant,
+    CASE WHEN SoldAsVacant = 'Y' THEN 'Yes'
+     WHEN SoldAsVacant = 'N' THEN 'No'
+     ELSE SoldAsVacant
+     END
+FROM PortfolioProject.dbo.[Nashville Housing]
+
+UPDATE PortfolioProject.dbo.[Nashville Housing]
+SET SoldAsVacant =  CASE WHEN SoldAsVacant = 'Y' THEN 'Yes'
+     WHEN SoldAsVacant = 'N' THEN 'No'
+     ELSE SoldAsVacant
+     END
+
+
+-- Removing Duplicates
+-- First we delete duplicates
+ 
+ WITH ROWNUMCTE AS (
+ SELECT * ,
+    ROW_NUMBER () OVER (PARTITION BY
+                        ParcelID, PropertyAddress, SaleDate, SalePrice, LegalReference
+                        ORDER BY UniqueID) row_num
+    FROM PortfolioProject.dbo.[Nashville Housing])
+    
+    DELETE
+    FROM RowNumCTE
+    WHERE row_num > 1
+    -- ORDER BY PropertyAddress
+
+    -- Then we check if all has been deleted
+ WITH ROWNUMCTE AS (
+ SELECT * ,
+    ROW_NUMBER () OVER (PARTITION BY
+                        ParcelID, PropertyAddress, SaleDate, SalePrice, LegalReference
+                        ORDER BY UniqueID) row_num
+    FROM PortfolioProject.dbo.[Nashville Housing])
+    
+    Select *
+    FROM RowNumCTE
+    WHERE row_num > 1
+    ORDER BY PropertyAddress
+
+
+-- Delete Columns that are not needed anymore
+SELECT * 
+    FROM PortfolioProject.dbo.[Nashville Housing]
+
+ALTER TABLE PortfolioProject.dbo.[Nashville Housing]
+DROP COLUMN PropertyAddress, OwnerAddress, TaxDistrict
+
